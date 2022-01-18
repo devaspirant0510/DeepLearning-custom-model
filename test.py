@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler,RobustScaler,Normalizer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Normalizer
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -14,18 +14,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 
 file_path = "파일경로"
-df = pd.read_excel(file_path)   # 파일 읽기
+df = pd.read_excel(file_path)  # 파일 읽기
 df = df[:1000]
 
 x_train = df.iloc[:, :-2]  # y 값 제외하고 슬라이싱 , 고장단계도 제외(1,2,3 은 고장 유무가 0이고 4,5는 고장 유무가 1이기때문에 제거)
 y_train = df.iloc[:, -1]  # y 값 만 슬라이싱
 
-
 scaler = StandardScaler()
 scaler.fit(x_train)
 x_train = scaler.transform(x_train)
-
-
 
 ros = SMOTE(random_state=42)
 x_train = pd.DataFrame(x_train, columns=df.columns[:-2])
@@ -33,10 +30,13 @@ X_res, y_res = ros.fit_resample(x_train, y_train)
 print('Resampled dataset shape %s' % Counter(y_res))
 
 train_x, test_x, train_y, test_y = train_test_split(X_res, y_res, random_state=42, stratify=y_res, test_size=0.3)
-#sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
-#sel.fit(x_train, y_train)
+"""train 에서 한번더 나누어줌 train,validation"""
+train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, random_state=42, stratify=train_y, test_size=0.3)
+
+# sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
+# sel.fit(x_train, y_train)
 selected_feat = x_train.columns[()]
-print(len(selected_feat)) #18
+print(len(selected_feat))  # 18
 print(selected_feat)
 
 # 원본데이터에서 추출된 Feature 만 슬라이싱
@@ -74,6 +74,9 @@ train_x = torch.FloatTensor(train_x.to_numpy())
 train_y = torch.FloatTensor(train_y.to_numpy())
 test_x = torch.FloatTensor(test_x.to_numpy())
 test_y = torch.FloatTensor(test_y.to_numpy())
+"""validation 값도 FloatTensor 로 변환"""
+val_x = torch.FloatTensor(val_x.to_numpy())
+val_y = torch.FloatTensor(val_y.to_numpy())
 
 train_dataset = TensorDataset(train_x, train_y)
 
@@ -82,10 +85,15 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 test_dataset = TensorDataset(test_x, test_y)
 
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+"""변환시킨 Tensor 를 DataLoader 로 만들어줌"""
+val_dataset = TensorDataset(val_x, val_y)
+
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=True)
 
 epoch = 2000
 lr = 0.01
 loss_list = []  # loss 값을 저장할 리스트
+valid_list = []
 acc_list = []  # acc 값을 저장할 리스트
 f1_list = []  # f1 score 값을 저장할 리스트
 
@@ -97,8 +105,11 @@ for ep in range(1, epoch + 1):
     acc_data = 0  # 1 epoch accuracy
     loss_data = 0  # 1 epoch loss
     f1_data = 0  # 1 epoch f1 score
+    valid_loss =0
     total = 0
     f1_total = 0
+    """학습모드"""
+    model.train()
     for x, y in train_loader:
         pred = model(x)
         loss = cost_func(pred, y.reshape(-1, 1))
@@ -124,8 +135,18 @@ for ep in range(1, epoch + 1):
     acc_list.append(acc)
     loss_list.append(loss_data)
     f1_list.append(f1_data)
+    model.eval()
+    with torch.no_grad():
+        for x, y in train_loader:
+            target = model(x)
+            y = y.reshape(-1,1)
+            loss = cost_func(target, y)
+            valid_loss = loss.item() * x.size(0)
+        valid_list.append(valid_loss)
+
     if ep % 100 == 0:
         print(f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t acc:{acc} \t\t f1 score :{f1_data} ")
+        print(f'Epoch {ep} \t\t Training Loss: {loss_data} \t\t Validation Loss: {valid_loss}')
 
 total = 0
 acc = 0
@@ -155,6 +176,17 @@ acc = (100 * acc / total)
 print(f"accuracy: {acc:.2f}%")
 for val, key in f1_dict.items():
     print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
+
+
+"""valid train loss 값 비교"""
+fig, ax1 = plt.subplots()
+ax1.plot(loss_list,label="train_loss")
+ax1.plot(valid_list,label="valid_loss")
+fig.legend()
+plt.show()
+
+model_name = "model1.pt"
+torch.save(model.state_dict(),model_name)
 
 '''''
 fig, ax1 = plt.subplots()
