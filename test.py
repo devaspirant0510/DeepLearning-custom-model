@@ -14,6 +14,10 @@ from collections import Counter
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import confusion_matrix
+import config
+
+model_name = input("모델 이름을 입력하세요")
+
 
 class Model(nn.Module):
     def __init__(self):
@@ -40,7 +44,6 @@ class Model(nn.Module):
         x = self.linear3(x)
         x = self.sigmoid(x)
         return x
-
 
 
 def read_file(path: str) -> pd.DataFrame:
@@ -71,13 +74,14 @@ def my_scaler(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.arra
     fit_x_test = sc.transform(x_test)
     return fit_x_train, fit_x_test
 
+
 def model_train():
     pass
 
 
 if __name__ == "__main__":
     # 1. 파일 읽기, x_data y_data 로 나눔
-    df = read_file("C:/Users/이정석/Desktop/기계공학과/프로젝트/파이썬과 머신러닝 project/dataset.xlsx")
+    df = read_file(config.dataset_file_path)
     x_data = df.iloc[:, :-2]  # y 값 제외하고 슬라이싱 , 고장단계도 제외(1,2,3 은 고장 유무가 0이고 4,5는 고장 유무가 1이기때문에 제거)
     y_data = df.iloc[:, -1]  # y 값 만 슬라이싱
     # 2. feature selection
@@ -93,7 +97,7 @@ if __name__ == "__main__":
     x_train, y_train = my_over_sampling(x_train, y_train)
     # 5. scaler
     x_train, x_test = my_scaler(x_train, x_test)
-    #============================== make model =================================
+    # ============================== make model =================================
     # 6. covert to Tensor
     x_train = torch.FloatTensor(x_train)
     y_train = torch.FloatTensor(y_train)
@@ -121,40 +125,57 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=lr)
     for ep in range(1, epoch + 1):
         acc_data = 0  # 1 epoch accuracy
-        rec_data = 0  # 1 epoch recall
         loss_data = 0  # 1 epoch loss
         f1_data = 0  # 1 epoch f1 score
+        recall_data = 0  # 1 epoch recall
+        precision_data = 0  # 1 epoch precision
+        TP = 0
+        FN = 0
+        FP = 0
+        TN = 0
         total = 0
         f1_total = 0
         for x, y in train_loader:
-            pred = model(x)  # forwad 연산 , 예측값
+            x = x.to(device)
+            y = y.to(device)
+            pred = model(x)
             loss = cost_func(pred, y.reshape(-1, 1))
             optimizer.zero_grad()
             loss.backward()  # backpropagation
             optimizer.step()  # weight bias update
+            # ===================== 성능 측정 (accuracy,f1 score,recall,precision) ========================
             # 예측값이 0.5 이상은 1로 처리 0.5 이하는 0 로 처리
             # 실제 정답값과 비교하여 accuracy 구함
-            y_pred = pred.detach().numpy()  # tensor 형태를 numpy 형태로 바꾸어준다.
-            y_pred = np.where(y_pred >= 0.5, 1, 0)  # np.where 조건에 맞게 numpy로 바꾸어 줘야한다.
-            y_true = y.detach().numpy().reshape(-1, 1)  # -1은 원래 행렬의 고정 그러니까 여기서는 행이 고정 (앞에서 받아왔다는 뜻)
-            acc_data += accuracy_score(y_true, y_pred)
-            rec_data += recall_score(y_true, y_pred)
+            y_pred = pred.cpu().detach().numpy()
+            y_pred = np.where(y_pred >= 0.5, 1, 0)
+            y_true = y.cpu().detach().numpy().reshape(-1, 1)
+            acc_data += np.sum(y_pred == y_true)
             # accuracy 를 구하기 위해 전체 데이터 사이즈 더함
-            total += y.size(0)  # [128]   # y데이터 크기
+            total += y.size(0)
             # loss 값 더함
             loss_data += loss
             recall = recall_score(y_true, y_pred, average="weighted", zero_division=0)
             precision = precision_score(y_true, y_pred, average="weighted", zero_division=0)
-            f1_data += f1_score(y_true, y_pred, average="weighted")
+            precision_data += precision
+            recall_data += recall
+            f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
             f1_total += 1
-        acc = (100 * acc_data / f1_total)
-        rec = (100 * rec_data / f1_total)
+            conf_matrix = confusion_matrix(y_true, y_pred)
+            TP = conf_matrix[0, 0]
+            FN = conf_matrix[0, 1]
+            FP = conf_matrix[1, 0]
+            TN = conf_matrix[1, 1]
+
+        acc = (100 * acc_data / total)
         f1_data = (100 * f1_data / f1_total)
+        precision_data = (100 * precision_data / f1_total)
+        recall_data = (100 * recall_data / f1_total)
         acc_list.append(acc)
         loss_list.append(loss_data)
         f1_list.append(f1_data)
         if ep % 100 == 0:
-            print(f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t acc:{acc} \t\t rec:{rec} \t\t f1 score :{f1_data} ")
+            print(
+                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t acc:{acc:.3f} \t\t f1 score :{f1_data:.3f} \t\t recall data:{recall_data:.3f} \t\t precision data :{precision_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
 
     total = 0
     acc = 0
@@ -206,7 +227,6 @@ if __name__ == "__main__":
     # ax2.set_ylabel("loss")
     # ax1.set_xlabel("epoch")
     # fig.legend()
-
 
 # rus = RandomUnderSampler(random_state=42)
 # print(x_data, y_data)
