@@ -21,6 +21,9 @@ from sklearn.feature_selection import SelectFwe, SelectPercentile, chi2, Generic
 from sklearn.feature_selection import RFE
 from sklearn.svm import SVR
 import config
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
+
 
 # if (config.is_model_save == True):
 #     model_name = input("모델 이름을 입력하세요")
@@ -73,6 +76,7 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
     # print(selector.feature_importance_)
     return x_data.loc[:, selected_feat], selected_feat
 
+
 def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
     undersampling = RandomUnderSampler(random_state=42)
     x_data_under, y_data_under = undersampling.fit_resample(x_data, y_data)
@@ -122,6 +126,7 @@ if __name__ == "__main__":
 
     # 2. feature selection
     x_data, selected_feat = my_feature_selection(x_data, y_data)
+
 
     # 3. train test split
     x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, stratify=y_data, random_state=32)
@@ -296,3 +301,7 @@ if __name__ == "__main__":
     # ax2.set_ylabel("loss")
     # ax1.set_xlabel("epoch")
     # fig.legend()
+
+
+    # https://www.analyticsvidhya.com/blog/2020/10/feature-selection-techniques-in-machine-learning/ ...feature selection
+    # https://machinelearningmastery.com/feature-selection-machine-learning-python/
