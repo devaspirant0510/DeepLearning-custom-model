@@ -196,8 +196,8 @@ if __name__ == "__main__":
             loss_data += loss
             recall = recall_score(y_true, y_pred, average="weighted", zero_division=0)
             precision = precision_score(y_true, y_pred, average="weighted", zero_division=0)
-            precision_data += precision
             recall_data += recall
+            precision_data += precision
             f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
             f1_total += 1
             conf_matrix = confusion_matrix(y_true, y_pred)
