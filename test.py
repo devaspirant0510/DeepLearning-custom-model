@@ -22,14 +22,22 @@ from sklearn.ensemble import ExtraTreesClassifier  # 이 방법도 있음
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+ACC_DATA = "acc_data"
+LOSS_DATA = "loss_data"
+F1_DATA = "f1_data"
+RECALL_DATA = "recall_data"
+PRECISION_DATA = "precision_data"
+AUC_DATA = "auc_data"
+
 
 # ========================  신경망 모델 정의 ================================
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.linear1 = nn.Linear(len(selected_feat), 200)
-        self.linear2 = nn.Linear(200, 50)
-        self.linear3 = nn.Linear(50, 1)
+        self.linear1 = nn.Linear(len(selected_feat), 150)
+        self.linear2 = nn.Linear(150, 70)
+        self.linear3 = nn.Linear(70, 30)
+        self.linear4 = nn.Linear(30,1)
         self.relu = nn.ReLU()
         self.leakyRelu = nn.LeakyReLU()
         self.mish = nn.Mish()
@@ -39,6 +47,7 @@ class Model(nn.Module):
         torch.nn.init.xavier_uniform_(self.linear1.weight)
         torch.nn.init.xavier_uniform_(self.linear2.weight)
         torch.nn.init.xavier_uniform_(self.linear3.weight)
+        torch.nn.init.xavier_uniform_(self.linear4.weight)
         self.layer = nn.Sequential(
             self.linear1,
             self.leakyRelu,
@@ -47,6 +56,9 @@ class Model(nn.Module):
             self.leakyRelu,
             self.dropout,
             self.linear3,
+            self.leakyRelu,
+            self.dropout,
+            self.linear4,
             self.sigmoid
         )
 
@@ -157,13 +169,24 @@ def model_train(train_loader, model, epoch, cost_func, optimizer):
     loss_list = []  # loss 값을 저장할 리스트
     acc_list = []  # acc 값을 저장할 리스트
     f1_list = []  # f1 score 값을 저장할 리스트
+    score_dict = {
+        "acc_data": 0,
+        "loss_data": 0,
+        "f1_data": 0,
+        "recall_data": 0,
+        "precision_data": 0,
+        "auc_data": 0
+    }
     model.to(device)  #
     for ep in range(1, epoch + 1):
-        acc_data = 0  # 1 epoch accuracy
-        loss_data = 0  # 1 epoch loss
-        f1_data = 0  # 1 epoch f1 score
-        recall_data = 0  # 1 epoch recall
-        precision_data = 0  # 1 epoch precision
+        for key_, _ in score_dict.items():
+            score_dict[key_] = 0
+        # score_dict[ACC_DATA] = 0  # 1 epoch accuracy
+        # score_dict[LOSS_DATA] = 0  # 1 epoch loss
+        # score_dict[F1_DATA] = 0  # 1 epoch f1 score
+        # score_dict[RECALL_DATA] = 0  # 1 epoch recall
+        # score_dict[PRECISION_DATA] = 0  # 1 epoch precision
+        # score_dict[AUC_DATA] = 0
         TP = 0
         FN = 0
         FP = 0
@@ -185,16 +208,16 @@ def model_train(train_loader, model, epoch, cost_func, optimizer):
             y_pred = pred.cpu().detach().numpy()
             y_pred = np.where(y_pred >= 0.5, 1, 0)
             y_true = y.cpu().detach().numpy().reshape(-1, 1)
-            acc_data += accuracy_score(y_true, y_pred)
+            score_dict[ACC_DATA] += accuracy_score(y_true, y_pred)
             # accuracy 를 구하기 위해 전체 데이터 사이즈 더함
             total += y.size(0)
             # loss 값 더함
-            loss_data += loss
+            score_dict[LOSS_DATA] += loss
             recall = recall_score(y_true, y_pred, average="weighted", zero_division=0)
             precision = precision_score(y_true, y_pred, average="weighted", zero_division=0)
-            precision_data += precision
-            recall_data += recall
-            f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
+            score_dict[PRECISION_DATA] += precision
+            score_dict[RECALL_DATA] += recall
+            score_dict[F1_DATA] += f1_score(y_true, y_pred, average="weighted", zero_division=0)
             f1_total += 1
             # print(conf_matrix)
             conf_matrix = confusion_matrix(y_true, y_pred)
@@ -203,20 +226,22 @@ def model_train(train_loader, model, epoch, cost_func, optimizer):
             FN = conf_matrix[1, 0]
             TP = conf_matrix[1, 1]  # 고장난 것을 고장이라 예측
             auc_score = roc_auc_score(y_true, y_pred)  # roc 커브
-            auc_data += auc_score
+            score_dict[AUC_DATA] += auc_score
 
-        acc = (100 * acc_data / total)
-        f1_data = (100 * f1_data / f1_total)
-        precision_data = (100 * precision_data / f1_total)
-        recall_data = (100 * recall_data / f1_total)
-        auc_data = (100 * auc_data / f1_total)
-        acc_list.append(acc)
-        loss_list.append(loss_data)
-        f1_list.append(f1_data)
+        for key,value in score_dict.items():
+            score_dict[key] = (100*value/f1_total)
+        # acc_list.append(acc)
+        # loss_list.append(loss_data)
+        # f1_list.append(f1_data)
         if ep % 100 == 0:
             print(
-                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t auc score :{auc_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
+                f"epoch : {ep}/{epoch}\t\tloss:{score_dict[LOSS_DATA]}\t\t accuracy:{score_dict[ACC_DATA]:.3f} \t\t "
+                f"recall:{score_dict[RECALL_DATA]:.3f} \t\t precision:{score_dict[PRECISION_DATA]:.3f} \t\t "
+                f"f1 score:{score_dict[F1_DATA]:.3f} \t\t auc score :{score_dict[AUC_DATA]:.3f} \t\t "
+                f"TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
 
+def model_test():
+    pass
 
 def my_random_forest(x_train, y_train, x_test, n_es, max_depth, random_state=43):
     clf = RandomForestClassifier(random_state=random_state, max_depth=max_depth, n_estimators=n_es)
@@ -267,7 +292,7 @@ if __name__ == "__main__":
     print(Counter(y_test))
 
     # 4. sampling
-    x_train, y_train = my_over_sampling_smote(x_train, y_train)
+    x_train, y_train = my_over_sampling_smoten(x_train, y_train)
     #  5. scaler
     x_train, x_test = my_scaler_standard(x_train, x_test)
     # ============================== make model =================================
@@ -283,70 +308,70 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 200
-    lr = 0.1
-    model = Model()
-    optimizer = optim.SGD(model.parameters(), lr=lr)
-    cost_func = nn.BCELoss()  # 이진분류기 때문에 binary cross entropy 사용
-    model_train(train_loader=train_loader, model=model, epoch=epoch, optimizer=optimizer, cost_func=cost_func)
-    total = 0
-    acc = 0
-    rec = 0
-    pre = 0
-    f1s = 0
-    f1_dict = {
-        "weighted": 0,
-        "macro": 0,
-        "micro": 0
-    }
-    test_loss = 0
-    f1_tot = 0
-    with torch.no_grad():  # gradient를 업데이트 하지 않는것 orch.no_grad()는 오차 역전파에 사용하는 계산량을 줄여서 처리 속도를 높인다.https://green-late7.tistory.com/48  https://go-hard.tistory.com/64
-        for x, y in test_loader:
-            pred = model(x)
-
-            y_pred = pred.detach().numpy()
-            y_pred = np.where(y_pred >= 0.5, 1, 0)
-            test_loss += cost_func(pred, y.reshape(-1, 1))
-            y_true = y.detach().numpy().reshape(-1, 1)
-            print(confusion_matrix(y_true, y_pred))
-            # print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
-            for key, value in f1_dict.items():
-                recall = recall_score(y_true, y_pred, average=key,
-                                      zero_division=0)  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html 0 나눗셈이 있을 때 반환할 값을 설정합니다. "warn"으로 설정하면 0으로 작동하지만 경고도 발생합니다.
-            print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
-            acc += accuracy_score(y_true, y_pred)
-            rec += recall_score(y_true, y_pred)
-            pre += precision_score(y_true, y_pred)
-            f1s += f1_score(y_true, y_pred)
-            for key, value in f1_dict.items():
-                recall = recall_score(y_true, y_pred, average=key, zero_division=0)
-                precision = precision_score(y_true, y_pred, average=key, zero_division=0)
-                f1_dict[key] += f1_score(y_true, y_pred, average=key)
-            f1_tot += 1
-            total += 1
-
-    rec = (100 * rec / total)
-    acc = (100 * acc / total)
-    print(f"accuracy: {acc:.2f}%")
-    print(f"recall: {rec:.2f}%")
-    for val, key in f1_dict.items():
-        print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
-
-    if config.is_model_save and model is not None:
-        torch.save(model.state_dict(), f"{model_name}.pt")
-    # print(y_true.shape)           왜 34 가 나오는지 확인한것
-    pre = (100 * pre / total)
-    f1s = (100 * f1s / total)
-
-    print("<Class 1에 대한 지표>")
-    print(f"\naccuracy: {acc:.2f}%")
-    print(f"recall: {rec:.2f}%")
-    print(f"precision: {pre:.2f}%")
-    print(f"f1 score: {f1s:.2f}%\n")
-
-    for val, key in f1_dict.items():
-        print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
+    # epoch = 2000
+    # lr = 0.1
+    # model = Model()
+    # optimizer = optim.SGD(model.parameters(), lr=lr)
+    # cost_func = nn.BCELoss()  # 이진분류기 때문에 binary cross entropy 사용
+    # model_train(train_loader=train_loader, model=model, epoch=epoch, optimizer=optimizer, cost_func=cost_func)
+    # total = 0
+    # acc = 0
+    # rec = 0
+    # pre = 0
+    # f1s = 0
+    # f1_dict = {
+    #     "weighted": 0,
+    #     "macro": 0,
+    #     "micro": 0
+    # }
+    # test_loss = 0
+    # f1_tot = 0
+    # with torch.no_grad():  # gradient를 업데이트 하지 않는것 orch.no_grad()는 오차 역전파에 사용하는 계산량을 줄여서 처리 속도를 높인다.https://green-late7.tistory.com/48  https://go-hard.tistory.com/64
+    #     for x, y in test_loader:
+    #         pred = model(x)
+    #
+    #         y_pred = pred.detach().numpy()
+    #         y_pred = np.where(y_pred >= 0.5, 1, 0)
+    #         test_loss += cost_func(pred, y.reshape(-1, 1))
+    #         y_true = y.detach().numpy().reshape(-1, 1)
+    #         print(confusion_matrix(y_true, y_pred))
+    #         # print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
+    #         for key, value in f1_dict.items():
+    #             recall = recall_score(y_true, y_pred, average=key,
+    #                                   zero_division=0)  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html 0 나눗셈이 있을 때 반환할 값을 설정합니다. "warn"으로 설정하면 0으로 작동하지만 경고도 발생합니다.
+    #         print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
+    #         acc += accuracy_score(y_true, y_pred)
+    #         rec += recall_score(y_true, y_pred)
+    #         pre += precision_score(y_true, y_pred)
+    #         f1s += f1_score(y_true, y_pred)
+    #         for key, value in f1_dict.items():
+    #             recall = recall_score(y_true, y_pred, average=key, zero_division=0)
+    #             precision = precision_score(y_true, y_pred, average=key, zero_division=0)
+    #             f1_dict[key] += f1_score(y_true, y_pred, average=key)
+    #         f1_tot += 1
+    #         total += 1
+    #
+    # rec = (100 * rec / total)
+    # acc = (100 * acc / total)
+    # print(f"accuracy: {acc:.2f}%")
+    # print(f"recall: {rec:.2f}%")
+    # for val, key in f1_dict.items():
+    #     print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
+    #
+    # if config.is_model_save and model is not None:
+    #     torch.save(model.state_dict(), f"{model_name}.pt")
+    # # print(y_true.shape)           왜 34 가 나오는지 확인한것
+    # pre = (100 * pre / total)
+    # f1s = (100 * f1s / total)
+    #
+    # print("<Class 1에 대한 지표>")
+    # print(f"\naccuracy: {acc:.2f}%")
+    # print(f"recall: {rec:.2f}%")
+    # print(f"precision: {pre:.2f}%")
+    # print(f"f1 score: {f1s:.2f}%\n")
+    #
+    # for val, key in f1_dict.items():
+    #     print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
         # micro는 accuray 값과 동일하고
         # macro는 각 클래스의 불균형을 반영하지 않은 지표 (산술평균)
         # weighted는 가중치를 통해 각 클래스의 불균형을 반영해 준 지표이다. 분류 자체를 잘했는지를 보려면 이 지표가 괜찮은 것 같다.
