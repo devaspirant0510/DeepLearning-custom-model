@@ -263,7 +263,7 @@ def show_rating(y_pred, y_true):
     print(f"precision : {precision_score(y_true, y_pred)}")
     print(f"recall : {recall_score(y_true, y_pred)}")
     print(f"roc : {roc_auc_score(y_true, y_pred)}")
-    print(f"confusion matrix :{confusion_matrix(y_true, y_pred)}")
+    print(f"confusion matrix \n {confusion_matrix(y_true, y_pred)}")
 
 
 if __name__ == "__main__":
@@ -276,6 +276,7 @@ if __name__ == "__main__":
     y_data = df.iloc[:, -1]  # y 값 만 슬라이싱
 
     df.info()  # type 및 자료 확인
+
     # print(df.describe())
     # print(df.corr()[["break_down"]])
     # df_corr = df.corr()
@@ -293,19 +294,34 @@ if __name__ == "__main__":
 
     # 4. sampling
     x_train, y_train = my_over_sampling_smoten(x_train, y_train)
+
     #  5. scaler
     x_train, x_test = my_scaler_standard(x_train, x_test)
+
     # ============================== make model =================================
-    # 6. covert to Tensor (인공신경망)
+
+    # 6.1 random forest
+
+    # pred, clf = my_random_forest(x_train, y_train, x_test, 100, 50, random_state=43)
+    # show_rating(pred,y_test)
+
+    # 6.2 KNN
+
+    pred, clf = my_knn_model(x_train, y_train, x_test, k=5, weights="distance", algorithm="auto") # distance는 가중치를 준 것
+    show_rating(pred, y_test)
+
+    # 6.3 covert to Tensor (인공신경망)
     x_train = torch.FloatTensor(x_train)
     y_train = torch.FloatTensor(y_train)
     x_test = torch.FloatTensor(x_test)
     y_test = torch.FloatTensor(y_test.to_numpy())
+
     # 7. make dataset
     train_dataset = TensorDataset(x_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=30, shuffle=True)  # batch size test data와 딱 떨어지게 맞추어줌
     test_dataset = TensorDataset(x_test, y_test)
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
+
 
     # hyper parameter
     # epoch = 2000
