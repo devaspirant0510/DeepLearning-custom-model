@@ -73,6 +73,12 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
     # print(selector.feature_importance_)
     return x_data.loc[:, selected_feat], selected_feat
 
+def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
+    undersampling = RandomUnderSampler(random_state=42)
+    x_data_under, y_data_under = undersampling.fit_resample(x_data, y_data)
+    print('\nResampled dataset shape %s \n' % Counter(y_data_under))
+    return [x_data_under, y_data_under]
+
 
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
     smote = SMOTE(random_state=42)
@@ -116,7 +122,7 @@ if __name__ == "__main__":
     print(Counter(y_test))
 
     # 4. sampling
-    x_train, y_train = my_over_sampling(x_train, y_train)
+    x_train, y_train = my_under_sampling(x_train, y_train)
 
     # 5. scaler
     x_train, x_test = my_scaler(x_train, x_test)
@@ -151,7 +157,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 2000
+    epoch = 100
     lr = 0.1
 
     #
@@ -257,6 +263,7 @@ if __name__ == "__main__":
     pre = (100 * pre / total)
     f1s = (100 * f1s / total)
 
+    print("<Class 1에 대한 지표>")
     print(f"\naccuracy: {acc:.2f}%")
     print(f"recall: {rec:.2f}%")
     print(f"precision: {pre:.2f}%")
