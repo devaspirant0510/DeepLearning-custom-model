@@ -112,6 +112,13 @@ if __name__ == "__main__":
     y_data = df.iloc[:, -1]  # y 값 만 슬라이싱
 
     df.info()  # type 및 자료 확인
+    #print(df.describe())
+    print(df.corr()[["break_down"]])
+    df_corr = df.corr()
+    print("\n")
+    print(df_corr.loc[np.abs(df_corr["break_down"] > 0.1), "break_down"])
+
+
 
     # 2. feature selection
     x_data, selected_feat = my_feature_selection(x_data, y_data)
