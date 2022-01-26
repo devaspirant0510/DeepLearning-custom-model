@@ -76,14 +76,14 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
 def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
     undersampling = RandomUnderSampler(random_state=42)
     x_data_under, y_data_under = undersampling.fit_resample(x_data, y_data)
-    print('\nResampled dataset shape %s \n' % Counter(y_data_under))
+    print('\nResampled dataset shape %s \n' % Counter(y_data_under))     # RandomUnderSampler or Tomelink
     return [x_data_under, y_data_under]
 
 
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
-    smote = SMOTE(random_state=42)
+    smote = ADASYN(random_state=42)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
-    print('\nResampled dataset shape %s \n' % Counter(y_data_smote))  # 많은 쪽의 910개로 oversamplling
+    print('\nResampled dataset shape %s \n' % Counter(y_data_smote))  # SMOTE or ADASYN
     return [x_data_smote, y_data_smote]
 
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     print(Counter(y_test))
 
     # 4. sampling
-    x_train, y_train = my_under_sampling(x_train, y_train)
+    x_train, y_train = my_over_sampling(x_train, y_train)
 
     # 5. scaler
     x_train, x_test = my_scaler(x_train, x_test)
@@ -209,6 +209,7 @@ if __name__ == "__main__":
             f1_total += 1
             conf_matrix = confusion_matrix(y_true, y_pred)
             TN = conf_matrix[0, 0]                       # 정상인 기계를 정상이라 예측
+
             FP = conf_matrix[0, 1]
             FN = conf_matrix[1, 0]
             TP = conf_matrix[1, 1]                       # 고장난 것을 고장이라 예측
