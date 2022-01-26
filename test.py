@@ -239,7 +239,7 @@ if __name__ == "__main__":
             test_loss += cost_func(pred, y.reshape(-1, 1))
             y_true = y.detach().numpy().reshape(-1, 1)
             print(confusion_matrix(y_true, y_pred))
-            # print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
+            print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
             acc += accuracy_score(y_true, y_pred)
             rec += recall_score(y_true, y_pred)
             pre += precision_score(y_true, y_pred)
@@ -275,8 +275,3 @@ if __name__ == "__main__":
     # ax2.set_ylabel("loss")
     # ax1.set_xlabel("epoch")
     # fig.legend()
-
-# rus = RandomUnderSampler(random_state=42)
-# print(x_data, y_data)
-# x_data_rus, y_data_rus = rus.fit_resample(x_data, y_data)
-# print(x_data_rus, y_data_rus)
