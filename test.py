@@ -264,7 +264,9 @@ if __name__ == "__main__":
 
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
-        #micro f1score은 accuray 값과 동일하고 macro f1score일 경우 각 클래스의 불균형을 반영하지 않은 지표
+        # micro f1score은 accuray 값과 동일하고
+        # macro f1score일 경우 각 클래스의 불균형을 반영하지 않은 지표
+        # weighted 는 가중치를 통해 각 클래스의 불균형을 반영해준 지표이다.
 
 
 
