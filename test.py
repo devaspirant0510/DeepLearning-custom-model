@@ -76,6 +76,7 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
     smote = SMOTE(random_state=54)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
+    print('\nResampled dataset shape %s \n' % Counter(y_data_smote))  # 많은 쪽의 910개로 oversamplling
     return [x_data_smote, y_data_smote]
 
 
