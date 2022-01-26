@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     # hyper parameter
     epoch = 2000
-    lr = 0.3
+    lr = 0.1
 
     #
     loss_list = []  # loss 값을 저장할 리스트
