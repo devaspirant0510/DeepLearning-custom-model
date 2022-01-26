@@ -256,7 +256,7 @@ if __name__ == "__main__":
     pre = (100 * pre / total)
     f1s = (100 * f1s / total)
 
-    print(f"accuracy: {acc:.2f}%")
+    print(f"\naccuracy: {acc:.2f}%")
     print(f"recall: {rec:.2f}%")
     print(f"precision: {pre:.2f}%")
     print(f"f1score: {f1s:.2f}%\n")
