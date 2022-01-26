@@ -150,7 +150,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 100
+    epoch = 2000
     lr = 0.1
 
     #
@@ -201,10 +201,10 @@ if __name__ == "__main__":
             f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
             f1_total += 1
             conf_matrix = confusion_matrix(y_true, y_pred)
-            TN = conf_matrix[0, 0]
+            TN = conf_matrix[0, 0]                       # 정상인 기계를 정상이라 예측
             FP = conf_matrix[0, 1]
             FN = conf_matrix[1, 0]
-            TP = conf_matrix[1, 1]
+            TP = conf_matrix[1, 1]                       # 고장난 것을 고장이라 예측
 
         acc = (100 * acc_data / total)
         f1_data = (100 * f1_data / f1_total)
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     print(f"\naccuracy: {acc:.2f}%")
     print(f"recall: {rec:.2f}%")
     print(f"precision: {pre:.2f}%")
-    print(f"f1score: {f1s:.2f}%\n")
+    print(f"f1 score: {f1s:.2f}%\n")
 
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
