@@ -14,6 +14,7 @@ from collections import Counter
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import SelectFwe, SelectPercentile, chi2, GenericUnivariateSelect
@@ -263,6 +264,9 @@ if __name__ == "__main__":
 
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
+        #micro f1score은 accuray 값과 동일하고 macro f1score일 경우 각 클래스의 불균형을 반영하지 않은 지표
+
+
 
 
     # fig, ax1 = plt.subplots()
