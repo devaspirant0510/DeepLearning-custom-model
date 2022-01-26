@@ -62,8 +62,8 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
     sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
     sel.fit(x_data, y_data)
     selected_feat = x_data.columns[(sel.get_support())]
-    print(len(selected_feat))
     print(selected_feat)
+    print("\n선택된 feature의 개수 : %s \n" % len(selected_feat))
     # # 원본데이터에서 추출된 Feature 만 슬라이싱
     # estimator = SVR(kernel="linear")
     # selector = RFE(estimator, n_features_to_select=5, step=1)
@@ -102,6 +102,8 @@ if __name__ == "__main__":
     df = read_file(config.dataset_file_path)
     x_data = df.iloc[:, :-2]  # y 값 제외하고 슬라이싱 , 고장단계도 제외(1,2,3 은 고장 유무가 0이고 4,5는 고장 유무가 1이기때문에 제거)
     y_data = df.iloc[:, -1]  # y 값 만 슬라이싱
+
+    df.info()  # type 및 자료 확인
 
     # 2. feature selection
     x_data, selected_feat = my_feature_selection(x_data, y_data)
