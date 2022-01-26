@@ -81,7 +81,7 @@ def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFra
 
 
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
-    smote = ADASYN(random_state=42)
+    smote = SMOTE(random_state=42)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
     print('\nResampled dataset shape %s \n' % Counter(y_data_smote))  # SMOTE or ADASYN
     return [x_data_smote, y_data_smote]
@@ -157,8 +157,8 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 100
-    lr = 0.1
+    epoch = 2000
+    lr = 0.3
 
     #
     loss_list = []  # loss 값을 저장할 리스트
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
         # micro는 accuray 값과 동일하고
         # macro는 각 클래스의 불균형을 반영하지 않은 지표 (산술평균)
-        # weighted는 가중치를 통해 각 클래스의 불균형을 반영해준 지표이다. 분류 자체를 잘했는지를 보려면 이 지표가 괜찮은 것 같다.
+        # weighted는 가중치를 통해 각 클래스의 불균형을 반영해 준 지표이다. 분류 자체를 잘했는지를 보려면 이 지표가 괜찮은 것 같다.
 
 
 
