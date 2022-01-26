@@ -74,7 +74,7 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
 
 
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
-    smote = SMOTE(random_state=54)
+    smote = SMOTE(random_state=42)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
     print('\nResampled dataset shape %s \n' % Counter(y_data_smote))  # 많은 쪽의 910개로 oversamplling
     return [x_data_smote, y_data_smote]
@@ -142,9 +142,10 @@ if __name__ == "__main__":
     y_train = torch.FloatTensor(y_train)
     x_test = torch.FloatTensor(x_test)
     y_test = torch.FloatTensor(y_test.to_numpy())
+
     # 7. make dataset
     train_dataset = TensorDataset(x_train, y_train)
-    train_loader = DataLoader(train_dataset, batch_size=30, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=30, shuffle=True) # batch size test data와 딱 떨어지게 맞추어줌
     test_dataset = TensorDataset(x_test, y_test)
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
@@ -159,7 +160,7 @@ if __name__ == "__main__":
     #
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = Model()
-    model.to(device)  #
+    model.to(device)
     cost_func = nn.BCELoss()  # 이진분류기 때문에 binary cross entropy 사용
     optimizer = optim.SGD(model.parameters(), lr=lr)
     for ep in range(1, epoch + 1):
@@ -219,6 +220,7 @@ if __name__ == "__main__":
     total = 0
     acc = 0
     rec = 0
+    pre = 0
 
     f1_dict = {
         "weighted": 0,
@@ -239,9 +241,9 @@ if __name__ == "__main__":
             # print(classification_report(y_true, y_pred, target_names=['class 0', 'class 1']))
             acc += accuracy_score(y_true, y_pred)
             rec += recall_score(y_true, y_pred)
+            pre += precision_score(y_true, y_pred)
             for key, value in f1_dict.items():
-                recall = recall_score(y_true, y_pred, average=key,
-                                      zero_division=0)  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html 0 나눗셈이 있을 때 반환할 값을 설정합니다. "warn"으로 설정하면 0으로 작동하지만 경고도 발생합니다.
+                recall = recall_score(y_true, y_pred, average=key, zero_division=0)
                 precision = precision_score(y_true, y_pred, average=key, zero_division=0)
                 f1_dict[key] += f1_score(y_true, y_pred, average=key)
             f1_tot += 1
@@ -249,9 +251,12 @@ if __name__ == "__main__":
 
     rec = (100 * rec / total)
     acc = (100 * acc / total)
+    pre = (100 * pre / total)
 
     print(f"accuracy: {acc:.2f}%")
     print(f"recall: {rec:.2f}%")
+    print(f"precision: {pre:.2f}%")
+
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
     print(y_true.shape)           #왜 34 가 나오는지 확인한것
