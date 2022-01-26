@@ -243,7 +243,7 @@ if __name__ == "__main__":
             acc += accuracy_score(y_true, y_pred)
             rec += recall_score(y_true, y_pred)
             pre += precision_score(y_true, y_pred)
-            f1s+= f1_score(y_true, y_pred)
+            f1s += f1_score(y_true, y_pred)
             for key, value in f1_dict.items():
                 recall = recall_score(y_true, y_pred, average=key, zero_division=0)
                 precision = precision_score(y_true, y_pred, average=key, zero_division=0)
@@ -263,7 +263,7 @@ if __name__ == "__main__":
 
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
-    print(y_true.shape)           #왜 34 가 나오는지 확인한것
+
 
     # fig, ax1 = plt.subplots()
     # ax1.plot(acc_list, color='blue', label="accuarcy")
