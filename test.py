@@ -60,20 +60,17 @@ def read_file(path: str) -> pd.DataFrame:
 
 
 def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Index]:
-    # sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
-    # sel.fit(x_data, y_data)
-    # selected_feat = x_data.columns[(sel.get_support())]
-    # print(len(selected_feat))
-    # print(selected_feat)
+    sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
+    sel.fit(x_data, y_data)
+    selected_feat = x_data.columns[(sel.get_support())]
+    print(len(selected_feat))
+    print(selected_feat)
     # # 원본데이터에서 추출된 Feature 만 슬라이싱
     # estimator = SVR(kernel="linear")
     # selector = RFE(estimator, n_features_to_select=5, step=1)
     # selector = selector.fit(x_data, y_data)
     # print(selector.coef_)
     # print(selector.feature_importance_)
-    print(x_data.shape)
-    x_data = SelectFwe(chi2, alpha=0.01).fit_transform(x_data, y_data)
-    print(x_data.shpae)
     return x_data, selected_feat
 
 
@@ -101,17 +98,17 @@ def my_random_forest(x_train, y_train, n_es, max_depth, random_state=43):
 
 
 if __name__ == "__main__":
+
     # 1. 파일 읽기, x_data y_data 로 나눔
     df = read_file(config.dataset_file_path)
     x_data = df.iloc[:, :-2]  # y 값 제외하고 슬라이싱 , 고장단계도 제외(1,2,3 은 고장 유무가 0이고 4,5는 고장 유무가 1이기때문에 제거)
     y_data = df.iloc[:, -1]  # y 값 만 슬라이싱
+
     # 2. feature selection
     x_data, selected_feat = my_feature_selection(x_data, y_data)
 
     # 3. train test split
-    x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,
-                                                        test_size=0.3, stratify=y_data,
-                                                        random_state=32)
+    x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, stratify=y_data, random_state=32)
     print(Counter(y_train))
     print(Counter(y_test))
     # 4. sampling
