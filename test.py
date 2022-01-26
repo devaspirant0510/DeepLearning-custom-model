@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Normalizer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Normalizer, MaxAbsScaler
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc, roc_auc_score
 from imblearn.over_sampling import SMOTE, ADASYN, RandomOverSampler, KMeansSMOTE, BorderlineSMOTE, SMOTEN, SMOTENC, \
@@ -17,11 +17,13 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 import config
-import pprint
 from deprecated import deprecated
 from sklearn.ensemble import ExtraTreesClassifier  # 이 방법도 있음
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
+# ========================  신경망 모델 정의 ================================
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
@@ -29,6 +31,7 @@ class Model(nn.Module):
         self.linear2 = nn.Linear(200, 50)
         self.linear3 = nn.Linear(50, 1)
         self.relu = nn.ReLU()
+        self.leakyRelu = nn.LeakyReLU()
         self.mish = nn.Mish()
         self.sigmoid = nn.Sigmoid()
         self.dropout = nn.Dropout(0.5)
@@ -36,25 +39,29 @@ class Model(nn.Module):
         torch.nn.init.xavier_uniform_(self.linear1.weight)
         torch.nn.init.xavier_uniform_(self.linear2.weight)
         torch.nn.init.xavier_uniform_(self.linear3.weight)
+        self.layer = nn.Sequential(
+            self.linear1,
+            self.leakyRelu,
+            self.dropout,
+            self.linear2,
+            self.leakyRelu,
+            self.dropout,
+            self.linear3,
+            self.sigmoid
+        )
 
     def forward(self, x):
-        x = self.linear1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.linear2(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.linear3(x)
-        x = self.sigmoid(x)
-        return x
+        return self.layer(x)
 
 
+# ===================================== 파일 읽기 ====================================
 def read_file(path: str) -> pd.DataFrame:
-    df = pd.read_excel(path)  # 파일 읽기
-    df = df[:1000]
-    return df
+    data = pd.read_excel(path)  # 파일 읽기
+    data = data[:1000]
+    return data
 
 
+# ==================================== Feature Selection ===============================
 def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Index]:
     sel = SelectFromModel(RandomForestClassifier(n_estimators=1230))
     sel.fit(x_data, y_data)
@@ -62,15 +69,10 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
     print(len(selected_feat))
     print(selected_feat)
     print("\n선택된 feature의 개수 : %s \n" % len(selected_feat))
-    # # 원본데이터에서 추출된 Feature 만 슬라이싱
-    # estimator = SVR(kernel="linear")
-    # selector = RFE(estimator, n_features_to_select=5, step=1)
-    # selector = selector.fit(x_data, y_data)
-    # print(selector.coef_)
-    # print(selector.feature_importance_)
     return x_data.loc[:, selected_feat], selected_feat
 
 
+# ==================================== over sampling =============================================
 def my_over_sampling_smote(x_data: pd.DataFrame, y_data: pd.DataFrame, random_state=42) -> [pd.DataFrame, pd.Series]:
     smote = SMOTE(random_state=random_state)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
@@ -85,14 +87,6 @@ def my_over_sampling_smoten(x_data: pd.DataFrame, y_data: pd.DataFrame, random_s
 
 
 @deprecated("확장가능한 함수를 만들었습니다.")
-def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
-    under_sampling = RandomUnderSampler(random_state=42)
-    x_data_under, y_data_under = under_sampling.fit_resample(x_data, y_data)
-    print('\nResampled dataset shape %s \n' % Counter(y_data_under))  # RandomUnderSampler or Tomelink
-    return [x_data_under, y_data_under]
-
-
-@deprecated("확장가능한 함수를 만들었습니다.")
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
     smote = SMOTE(random_state=42)
     x_data_smote, y_data_smote = smote.fit_resample(x_data, y_data)
@@ -100,6 +94,7 @@ def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFram
     return [x_data_smote, y_data_smote]
 
 
+# ==================================== under sampling =============================================
 def my_over_sampling_adasyn(x_data: pd.DataFrame, y_data: pd.DataFrame, random_state=42) -> [pd.DataFrame, pd.Series]:
     adasyn = ADASYN(random_state=random_state)
     x_data_adasyn, y_data_adasyn = adasyn.fit_resample(x_data, y_data)
@@ -112,16 +107,24 @@ def my_under_sampling_tomelink(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [p
     return [x_data_adasyn, y_data_adasyn]
 
 
-def my_scaler_normalizer(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.array]:
-    sc = Normalizer()
+@deprecated("확장가능한 함수를 만들었습니다.")
+def my_under_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
+    under_sampling = RandomUnderSampler(random_state=42)
+    x_data_under, y_data_under = under_sampling.fit_resample(x_data, y_data)
+    print('\nResampled dataset shape %s \n' % Counter(y_data_under))  # RandomUnderSampler or Tomelink
+    return [x_data_under, y_data_under]
+
+
+# ============================= preprocessing ============================================
+def my_robust_scaler(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.array]:
+    sc = RobustScaler()
     fit_x_train = sc.fit_transform(x_train)
     fit_x_test = sc.transform(x_test)
     return fit_x_train, fit_x_test
 
 
-@deprecated("확장가능한 함수를 만들었습니다.")
-def my_scaler(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.array]:
-    sc = StandardScaler()
+def my_scaler_normalizer(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.array]:
+    sc = Normalizer()
     fit_x_train = sc.fit_transform(x_train)
     fit_x_test = sc.transform(x_test)
     return fit_x_train, fit_x_test
@@ -141,8 +144,78 @@ def my_scaler_standard(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array
     return fit_x_train, fit_x_test
 
 
-def model_train():
-    pass
+@deprecated("확장가능한 함수를 만들었습니다.")
+def my_scaler(x_train: pd.DataFrame, x_test: pd.DataFrame) -> [np.array, np.array]:
+    sc = StandardScaler()
+    fit_x_train = sc.fit_transform(x_train)
+    fit_x_test = sc.transform(x_test)
+    return fit_x_train, fit_x_test
+
+
+def model_train(train_loader, model, epoch, cost_func, optimizer):
+    global device
+    loss_list = []  # loss 값을 저장할 리스트
+    acc_list = []  # acc 값을 저장할 리스트
+    f1_list = []  # f1 score 값을 저장할 리스트
+    model.to(device)  #
+    for ep in range(1, epoch + 1):
+        acc_data = 0  # 1 epoch accuracy
+        loss_data = 0  # 1 epoch loss
+        f1_data = 0  # 1 epoch f1 score
+        recall_data = 0  # 1 epoch recall
+        precision_data = 0  # 1 epoch precision
+        TP = 0
+        FN = 0
+        FP = 0
+        TN = 0
+        total = 0
+        auc_data = 0
+        f1_total = 0
+        for x, y in train_loader:
+            x = x.to(device)
+            y = y.to(device)
+            pred = model(x)
+            loss = cost_func(pred, y.reshape(-1, 1))
+            optimizer.zero_grad()
+            loss.backward()  # backpropagation
+            optimizer.step()  # weight bias update
+            # ===================== 성능 측정 (accuracy,f1 score,recall,precision) ========================
+            # 예측값이 0.5 이상은 1로 처리 0.5 이하는 0 로 처리
+            # 실제 정답값과 비교하여 accuracy 구함
+            y_pred = pred.cpu().detach().numpy()
+            y_pred = np.where(y_pred >= 0.5, 1, 0)
+            y_true = y.cpu().detach().numpy().reshape(-1, 1)
+            acc_data += accuracy_score(y_true, y_pred)
+            # accuracy 를 구하기 위해 전체 데이터 사이즈 더함
+            total += y.size(0)
+            # loss 값 더함
+            loss_data += loss
+            recall = recall_score(y_true, y_pred, average="weighted", zero_division=0)
+            precision = precision_score(y_true, y_pred, average="weighted", zero_division=0)
+            precision_data += precision
+            recall_data += recall
+            f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
+            f1_total += 1
+            # print(conf_matrix)
+            conf_matrix = confusion_matrix(y_true, y_pred)
+            TN = conf_matrix[0, 0]  # 정상인 기계를 정상이라 예측
+            FP = conf_matrix[0, 1]
+            FN = conf_matrix[1, 0]
+            TP = conf_matrix[1, 1]  # 고장난 것을 고장이라 예측
+            auc_score = roc_auc_score(y_true, y_pred)  # roc 커브
+            auc_data += auc_score
+
+        acc = (100 * acc_data / total)
+        f1_data = (100 * f1_data / f1_total)
+        precision_data = (100 * precision_data / f1_total)
+        recall_data = (100 * recall_data / f1_total)
+        auc_data = (100 * auc_data / f1_total)
+        acc_list.append(acc)
+        loss_list.append(loss_data)
+        f1_list.append(f1_data)
+        if ep % 100 == 0:
+            print(
+                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t auc score :{auc_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
 
 
 def my_random_forest(x_train, y_train, x_test, n_es, max_depth, random_state=43):
@@ -160,7 +233,12 @@ def my_knn_model(x_train, y_train, x_test, k=5, weights="uniform", algorithm="au
 
 
 def show_rating(y_pred, y_true):
-    pass
+    print(f"accuracy : {accuracy_score(y_true, y_pred)}")
+    print(f"f1 score : {f1_score(y_true, y_pred)}")
+    print(f"precision : {precision_score(y_true, y_pred)}")
+    print(f"recall : {recall_score(y_true, y_pred)}")
+    print(f"roc : {roc_auc_score(y_true, y_pred)}")
+    print(f"confusion matrix :{confusion_matrix(y_true, y_pred)}")
 
 
 if __name__ == "__main__":
@@ -190,46 +268,9 @@ if __name__ == "__main__":
 
     # 4. sampling
     x_train, y_train = my_over_sampling_smote(x_train, y_train)
-    # # 5. scaler
+    #  5. scaler
     x_train, x_test = my_scaler_standard(x_train, x_test)
-    # # ============================== make model =================================
-    # # pred, clf = my_random_forest(x_train, y_train, x_test, 1300, 120, 34)
-    # pred, clf = my_knn_model(x_train, y_train, x_test, k=4, weights="distance")
-    # print(accuracy_score(y_test, pred))
-    # clf = RandomForestClassifier()
-    # pars = {"max_depth": list(range(90, 100)),
-    #         "n_estimators": list(range(70, 75)),
-    #         "random_state": [42]}
-    # gcv = GridSearchCV(clf, pars)
-    # gcv.fit(x_train, y_train)
-    # pred = clf.predict(x_test)
-    # print(accuracy_score(y_test, pred))
-    # print(f1_score(y_test, pred))
-    # print(recall_score(y_test, pred))
-    # print(precision_score(y_test, pred))
-    # print(confusion_matrix(y_test, pred))
-    # print(f1_score(y_test, pred))
-
-    # 5. scaler
-    x_train, x_test = my_scaler(x_train, x_test)
-
     # ============================== make model =================================
-
-    # clf = my_random_forest(x_train,y_train,1300,120,34)
-    # clf = RandomForestClassifier()
-    # pars = {"max_depth": list(range(80, 100)),
-    #         "n_estimators": list(range(70, 80)),
-    #         "random_state": [42]}
-    # gcv = GridSearchCV(clf, pars)
-    # gcv.fit(x_train, y_train)
-    # pred = gcv.best_estimator_.predict(x_test)
-    # print(accuracy_score(y_test, pred))
-    # print(f1_score(y_test, pred))
-    # print(recall_score(y_test, pred))
-    # print(precision_score(y_test, pred))
-    # print(confusion_matrix(y_test, pred))
-    # print(f1_score(y_test, pred))
-
     # 6. covert to Tensor (인공신경망)
     x_train = torch.FloatTensor(x_train)
     y_train = torch.FloatTensor(y_train)
@@ -242,77 +283,12 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 2000
+    epoch = 200
     lr = 0.1
-
-    loss_list = []  # loss 값을 저장할 리스트
-    acc_list = []  # acc 값을 저장할 리스트
-    f1_list = []  # f1 score 값을 저장할 리스트
-    #
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = Model()
-    model.to(device)  #
-    cost_func = nn.BCELoss()  # 이진분류기 때문에 binary cross entropy 사용
     optimizer = optim.SGD(model.parameters(), lr=lr)
-    for ep in range(1, epoch + 1):
-        acc_data = 0  # 1 epoch accuracy
-        loss_data = 0  # 1 epoch loss
-        f1_data = 0  # 1 epoch f1 score
-        recall_data = 0  # 1 epoch recall
-        precision_data = 0  # 1 epoch precision
-        TP = 0
-        FN = 0
-        FP = 0
-        TN = 0
-        total = 0
-        auc_data = 0
-        f1_total = 0
-        for x, y in train_loader:
-            x = x.to(device)
-            y = y.to(device)
-            pred = model(x)
-            loss = cost_func(pred, y.reshape(-1, 1))
-            optimizer.zero_grad()
-            loss.backward()  # backpropagation
-            optimizer.step()  # weight bias update
-            # ===================== 성능 측정 (accuracy,f1 score,recall,precision) ========================
-            # 예측값이 0.5 이상은 1로 처리 0.5 이하는 0 로 처리
-            # 실제 정답값과 비교하여 accuracy 구함
-            y_pred = pred.cpu().detach().numpy()
-            y_pred = np.where(y_pred >= 0.5, 1, 0)
-            y_true = y.cpu().detach().numpy().reshape(-1, 1)
-            acc_data += np.sum(y_pred == y_true)
-            # accuracy 를 구하기 위해 전체 데이터 사이즈 더함
-            total += y.size(0)
-            # loss 값 더함
-            loss_data += loss
-            recall = recall_score(y_true, y_pred, average="weighted", zero_division=0)
-            precision = precision_score(y_true, y_pred, average="weighted", zero_division=0)
-            precision_data += precision
-            recall_data += recall
-            f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
-            f1_total += 1
-            # print(conf_matrix)
-            conf_matrix = confusion_matrix(y_true, y_pred)
-            TN = conf_matrix[0, 0]  # 정상인 기계를 정상이라 예측
-            FP = conf_matrix[0, 1]
-            FN = conf_matrix[1, 0]
-            TP = conf_matrix[1, 1]  # 고장난 것을 고장이라 예측
-            auc_score = roc_auc_score(y_true, y_pred) # roc 커브
-            auc_data+=auc_score
-
-        acc = (100 * acc_data / total)
-        f1_data = (100 * f1_data / f1_total)
-        precision_data = (100 * precision_data / f1_total)
-        recall_data = (100 * recall_data / f1_total)
-        auc_data = (100*auc_data/f1_total)
-        acc_list.append(acc)
-        loss_list.append(loss_data)
-        f1_list.append(f1_data)
-        if ep % 100 == 0:
-            print(
-                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t auc score :{auc_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
-
+    cost_func = nn.BCELoss()  # 이진분류기 때문에 binary cross entropy 사용
+    model_train(train_loader=train_loader, model=model, epoch=epoch, optimizer=optimizer, cost_func=cost_func)
     total = 0
     acc = 0
     rec = 0
