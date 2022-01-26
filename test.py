@@ -150,7 +150,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=30, shuffle=True)
 
     # hyper parameter
-    epoch = 2000
+    epoch = 100
     lr = 0.1
 
     #
@@ -221,6 +221,7 @@ if __name__ == "__main__":
     acc = 0
     rec = 0
     pre = 0
+    f1s = 0
 
     f1_dict = {
         "weighted": 0,
@@ -242,6 +243,7 @@ if __name__ == "__main__":
             acc += accuracy_score(y_true, y_pred)
             rec += recall_score(y_true, y_pred)
             pre += precision_score(y_true, y_pred)
+            f1s+= f1_score(y_true, y_pred)
             for key, value in f1_dict.items():
                 recall = recall_score(y_true, y_pred, average=key, zero_division=0)
                 precision = precision_score(y_true, y_pred, average=key, zero_division=0)
@@ -252,10 +254,12 @@ if __name__ == "__main__":
     rec = (100 * rec / total)
     acc = (100 * acc / total)
     pre = (100 * pre / total)
+    f1s = (100 * f1s / total)
 
     print(f"accuracy: {acc:.2f}%")
     print(f"recall: {rec:.2f}%")
     print(f"precision: {pre:.2f}%")
+    print(f"f1score: {f1s:.2f}%\n")
 
     for val, key in f1_dict.items():
         print(f"f1 score {val} : {100 * key / f1_tot:.2f}%")
