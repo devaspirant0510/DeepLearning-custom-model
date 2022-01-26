@@ -21,8 +21,7 @@ from sklearn.feature_selection import SelectFwe, SelectPercentile, chi2, Generic
 from sklearn.feature_selection import RFE
 from sklearn.svm import SVR
 import config
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import ExtraTreesClassifier         # 이 방법도 있음
 
 
 # if (config.is_model_save == True):
