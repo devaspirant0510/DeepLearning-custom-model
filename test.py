@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Normalizer
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc, roc_auc_score
 from imblearn.over_sampling import SMOTE, ADASYN, RandomOverSampler, KMeansSMOTE, BorderlineSMOTE, SMOTEN, SMOTENC, \
     SVMSMOTE
 from sklearn.neighbors import KNeighborsClassifier
@@ -265,6 +265,7 @@ if __name__ == "__main__":
         FP = 0
         TN = 0
         total = 0
+        auc_data = 0
         f1_total = 0
         for x, y in train_loader:
             x = x.to(device)
@@ -297,17 +298,20 @@ if __name__ == "__main__":
             FP = conf_matrix[0, 1]
             FN = conf_matrix[1, 0]
             TP = conf_matrix[1, 1]  # 고장난 것을 고장이라 예측
+            auc_score = roc_auc_score(y_true, y_pred) # roc 커브
+            auc_data+=auc_score
 
         acc = (100 * acc_data / total)
         f1_data = (100 * f1_data / f1_total)
         precision_data = (100 * precision_data / f1_total)
         recall_data = (100 * recall_data / f1_total)
+        auc_data = (100*auc_data/f1_total)
         acc_list.append(acc)
         loss_list.append(loss_data)
         f1_list.append(f1_data)
         if ep % 100 == 0:
             print(
-                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
+                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t auc score :{auc_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
 
     total = 0
     acc = 0
