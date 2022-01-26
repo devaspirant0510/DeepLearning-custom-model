@@ -70,7 +70,7 @@ def my_feature_selection(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.Data
     # selector = selector.fit(x_data, y_data)
     # print(selector.coef_)
     # print(selector.feature_importance_)
-    return x_data, selected_feat
+    return x_data.loc[:, selected_feat], selected_feat
 
 
 def my_over_sampling(x_data: pd.DataFrame, y_data: pd.DataFrame) -> [pd.DataFrame, pd.Series]:
