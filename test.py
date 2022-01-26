@@ -201,10 +201,10 @@ if __name__ == "__main__":
             f1_data += f1_score(y_true, y_pred, average="weighted", zero_division=0)
             f1_total += 1
             conf_matrix = confusion_matrix(y_true, y_pred)
-            TP = conf_matrix[0, 0]
-            FN = conf_matrix[0, 1]
-            FP = conf_matrix[1, 0]
-            TN = conf_matrix[1, 1]
+            TN = conf_matrix[0, 0]
+            FP = conf_matrix[0, 1]
+            FN = conf_matrix[1, 0]
+            TP = conf_matrix[1, 1]
 
         acc = (100 * acc_data / total)
         f1_data = (100 * f1_data / f1_total)
@@ -215,7 +215,7 @@ if __name__ == "__main__":
         f1_list.append(f1_data)
         if ep % 100 == 0:
             print(
-                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t acc:{acc:.3f} \t\t f1 score :{f1_data:.3f} \t\t recall data:{recall_data:.3f} \t\t precision data :{precision_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
+                f"epoch : {ep}/{epoch}\t\tloss:{loss_data}\t\t accuracy:{acc:.3f} \t\t recall:{recall_data:.3f} \t\t precision:{precision_data:.3f} \t\t f1 score:{f1_data:.3f} \t\t TP:{TP} FN:{FN} FP:{FP} TN:{TN}")
 
     total = 0
     acc = 0
